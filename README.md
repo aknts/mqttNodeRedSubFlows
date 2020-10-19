@@ -7,3 +7,4 @@ Data is exchanged between each component with MQTT.
 http://snf-825292.vm.okeanos.grnet.gr/ktserpes/STRAND
 
 Subflows are being built as absract they can be allowing other apps to deploy use the node red as a deployment platform.
+Repository name might change depending on further development.
