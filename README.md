@@ -16,3 +16,4 @@ https://flows.nodered.org/node/node-red-contrib-md5
 
 From there just use the node-red gui to import the two subflows.
 The first one is for some global settings and the second a generic app node.
+Node red must be able to access your kubernetes installation and to be more specific the kubernetes proxy that must be running.
