@@ -1,0 +1,14 @@
+[Unit]
+Description=kubectl proxy 8080
+After=network.target
+
+[Service]
+User=root
+Environment="KUBECONFIG=/etc/kubernetes/admin.conf"
+ExecStart=/bin/bash -c "/usr/bin/kubectl proxy --api-prefix=/ --accept-hosts=^localhost$,^127.0.0.1$,^[::1]$,^192.168.1.*$ --address=192.168.1.254 --port=8080"
+StartLimitInterval=0
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
