@@ -1,0 +1,360 @@
+[
+    {
+        "id": "10db5822.97cf88",
+        "type": "subflow",
+        "name": "GlobalSettings",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 60,
+                "wires": [
+                    {
+                        "id": "8b475ac3.83c4f8"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 1740,
+                "y": 60,
+                "wires": [
+                    {
+                        "id": "1a4c35c9.570a8a",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [
+            {
+                "name": "nameid",
+                "type": "str",
+                "value": "",
+                "ui": {
+                    "label": {
+                        "en-US": "Pipeline name"
+                    },
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "str"
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "kubeproxy",
+                "type": "str",
+                "value": "",
+                "ui": {
+                    "label": {
+                        "en-US": "Kubectl proxy"
+                    },
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "str"
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "namespace",
+                "type": "str",
+                "value": "default",
+                "ui": {
+                    "label": {
+                        "en-US": "Kubernetes namespace"
+                    },
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "str"
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "",
+                "type": "str",
+                "value": "",
+                "ui": {
+                    "type": "none",
+                    "label": {},
+                    "opts": {}
+                }
+            },
+            {
+                "name": "globalsettings",
+                "type": "json",
+                "value": "{\"broker\":\"mqtt://192.168.2.241:1883\",\"logtopic\":\"global/logz\"}",
+                "ui": {
+                    "label": {
+                        "en-US": "Global settings"
+                    },
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "json"
+                        ]
+                    }
+                }
+            }
+        ],
+        "color": "#DDAA99",
+        "status": {
+            "x": 200,
+            "y": 160,
+            "wires": [
+                {
+                    "id": "9ddecb56.4f7548",
+                    "port": 0
+                }
+            ]
+        }
+    },
+    {
+        "id": "68b62ab8.e62fd4",
+        "type": "http request",
+        "z": "10db5822.97cf88",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": false,
+        "url": "http://localhost:1880/flows",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 1310,
+        "y": 60,
+        "wires": [
+            [
+                "1a4c35c9.570a8a"
+            ]
+        ]
+    },
+    {
+        "id": "9ddecb56.4f7548",
+        "type": "status",
+        "z": "10db5822.97cf88",
+        "name": "",
+        "scope": null,
+        "x": 80,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1a4c35c9.570a8a",
+        "type": "function",
+        "z": "10db5822.97cf88",
+        "name": "GetNodesOrder",
+        "func": "// From the previous step we get a payload with all the live flows that node-red has \n// plus set up some variables and arrays to help us find the id of each subflow node \nvar data=msg.payload;\nvar deployments = msg.deployments;\nnode.warn(deployments);\nmsg.payload='';\nvar nameid=global.get(\"nameid\");\nvar envar;\nvar flowid;\nvar flownodes = [];\nvar deletedeploys = [];\nvar numberofnodes;\nvar flownodesorder = [];\nvar flownodesappvalue = [];\nvar subflowid;\n\nif (global.get(\"flownodesorder\")){\n    var flownodesordertemp = global.get(\"flownodesorder\");\n}\nif (global.get(\"flownodesappname\")){\n    var flownodesappname = global.get(\"flownodesappname\");\n} else {\n    flownodesappname = [];\n}\n\n\nvar modifiednodes;\nvar i=0;\nvar ii=0;\n\n// A function to compare two arrays\nfunction comparearrays (a1, a2) {\n    var a = [], diff = [];\n    for (var i = 0; i < a1.length; i++) {\n        a[a1[i]] = true;\n    }\n    for (i = 0; i < a2.length; i++) {\n        if (a[a2[i]]) {\n            delete a[a2[i]];\n        } else {\n            a[a2[i]] = true;\n        }\n    }\n    for (var k in a) {\n        diff.push(k);\n    }\n    return diff;\n}\n\n// With the enviromental variable nameid that only this subflow has we pinpoint which is the current flow id and pass it to a global variable\ndata.forEach(element => {\n    if (element.type.includes(\"subflow:\")) {\n        if (element.env) { \n            envar = element.env;\n            envar.forEach(envarelement => {\n                if (envarelement.value == nameid) {\n                    flowid = element.z;\n                    global.set(\"flowid\",flowid);\n                }\n            });\n       }\n    }\n});\n// Nodes that in their object have the z field with the flow's id means that are the main flow's nodes and we push in an array their id and their wires variable\n// The wires describe to whom their output is connected to\ndata.forEach(element => {\n    if ((element.z == flowid) && (element.type.includes(\"subflow:\"))) {\n        if (element.wires[0][0]) {\n            flownodes.push([element.id,element.wires[0][0]]);\n            //flownodes.push([element.id.replace(\".\", \"\"),element.wires[0][0].replace(\".\", \"\")]);\n        } else {\n            flownodes.push([element.id,null]);\n            //flownodes.push([element.id.replace(\".\", \"\"),null]);\n        }\n    }\n});\nnumberofnodes = flownodes.length;\n// The node that doesn't have wires is the last one and from that one we trace back the order of the nodes\nflownodes.forEach(element => {\n   if (element[1] == null) {\n       flownodesorder.push(element[0]);\n       //flownodesorder.push(element[0].replace(\".\", \"\"));\n   }\n});\n\n// We trace back the order of the nodes by checking the node's id to whom nodes is marked as a wire, when we found the node, we push it to the array and start again until the end\nwhile (flownodesorder.length < numberofnodes) {\n    if (flownodes[i][1] == flownodesorder[ii]) {\n        flownodesorder.push(flownodes[i][0]);\n        //flownodesorder[ii] = flownodesorder[ii].replace(\".\", \"\");\n        ii++;\n        i=0;\n    } else {\n        i++;\n    }\n}\n\n// After we fill our array, we reverse it to mark the proper order\n// Finally we compare and find if a node has been deleted from the flow by comparing the nodes ids\n// After we get the id of the nodes we build a delete request that will delete the deployment\nflownodesorder=flownodesorder.reverse();\nflownodesorder.shift();\n\n// Find the nodes app name\nfor (i = 0; i < flownodesorder.length; i++) {\n    data.forEach(element => {\n        if (element.id == flownodesorder[i]) {\n            subflowid = element.type.replace(\"subflow:\", \"\");\n            data.forEach(element1 => {\n                if (element1.id == subflowid) {\n                    element1.env.forEach(element2 => {\n                        if (element2.name == \"appname\") {\n                            flownodesappvalue.push(nameid+'-'+flownodesorder[i].replace(\".\", \"\")+'-'+element2.value);\n                        }\n                    });\n                }\n            });\n        }\n    });\n}\n\nnode.warn('Deployments:'+deployments);\nnode.warn('Flow nodes:'+flownodesappvalue);\n\n// Remove the dot from the nodes id\nfor (i = 0; i < flownodesorder.length; i++) {\n    flownodesorder[i] = flownodesorder[i].replace(\".\", \"\");\n}\n\n// Compare nodes found in the flow with actual deployments and if a deployment is not present in the flow build a msg to delete it\nmodifiednodes=comparearrays(flownodesappvalue,deployments);\nfor (i = 0; i < modifiednodes.length; i++) {\n    if (!flownodesappvalue.includes(modifiednodes[i])) {\n        var msg3={};\n        msg3.payload = 'gracePeriodSeconds: 0\\r\\norphanDependents: false';\n        msg3.headers = {};\n        msg3.headers[\"Content-Type\"] = 'application/yaml';\n        msg3.url = 'http://'+global.get(\"kubeproxy\")+'/apis/apps/v1/namespaces/default/deployments/'+modifiednodes[i];\n        node.warn(msg3);\n        node.warn(\"The deployment with name \"+modifiednodes[i]+\" must be deleted.\");\n        deletedeploys.push(msg3);\n        for (ii = 0; ii < flownodesorder.length; ii++) {\n            if (flownodesorder[ii] == modifiednodes[i]) {\n                flownodesorder.splice(ii, 1);\n            }\n        }\n        node.warn('flownodesorder:'+flownodesorder);\n        for (ii = 0; ii < flownodesappvalue.length; ii++) {\n            if (flownodesappvalue[ii] == modifiednodes[i]) {\n                flownodesappvalue.splice(ii, 1);\n            }\n        }\n        node.warn('flownodesappvalue:'+flownodesappvalue);\n        for (ii = 0; ii < flownodesappname.length; ii++) {\n            if (flownodesappname[ii].nodeid == modifiednodes[i]) {\n                flownodesappname.splice(ii, 1);\n            }\n        }\n        node.warn(flownodesappname);\n        \n    }\n}\n// After building our output variable wee feed them to the outputs of the subflow.\nglobal.set(\"flownodesorder\",flownodesorder);\n//flownodesappname == {};\nglobal.set(\"flownodesappname\",flownodesappname);\nglobal.set(\"flownodesappvalue\",flownodesappvalue);\nmsg.payload = flownodesorder[0];\nnode.status({fill:\"green\",shape:\"dot\",text:\"Ready to deploy nodes\"});\nreturn [msg,deletedeploys];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 1500,
+        "y": 60,
+        "wires": [
+            [],
+            [
+                "80e62f76.a72d8"
+            ]
+        ]
+    },
+    {
+        "id": "8b475ac3.83c4f8",
+        "type": "function",
+        "z": "10db5822.97cf88",
+        "name": "CheckEnviromentalVariables",
+        "func": "// Check if form fields are not empty and set corresponing global values\nif (env.get(\"nameid\") == \"\") {\n    node.status({fill:\"red\",shape:\"dot\",text:\"Form not filled correclty.\"});\n    throw(\"Pipeline name is empty.\");\n} else {\n    global.set(\"nameid\", env.get(\"nameid\"));\n}\nif (env.get(\"kubeproxy\") == \"\") {\n    node.status({fill:\"red\",shape:\"dot\",text:\"Form not filled correclty.\"});\n    throw(\"Kubectl proxy is empty.\");\n} else {\n    global.set(\"kubeproxy\", env.get(\"kubeproxy\"));\n}\nif (env.get(\"namespace\") == \"\") {\n    node.status({fill:\"red\",shape:\"dot\",text:\"Namespace not filled correclty.\"});\n    throw(\"Kubernetes namespace is empty.\");\n} else {\n    global.set(\"namespace\", env.get(\"namespace\"));\n}\nif (typeof(env.get(\"globalsettings\")) === \"object\") {\n    global.set(\"globalsettings\", env.get(\"globalsettings\"));\n} else {\n    node.status({fill:\"red\",shape:\"dot\",text:\"Form not filled correclty.\"});\n    throw(\"Global settings is not an JSON object.\");\n} \nnode.status({fill:\"green\",shape:\"dot\",text:\"Settings passed check\"});\nmsg.url = env.get(\"kubeproxy\")+'/healthz';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 240,
+        "y": 60,
+        "wires": [
+            [
+                "5e85caef.3137a4"
+            ]
+        ]
+    },
+    {
+        "id": "80e62f76.a72d8",
+        "type": "http request",
+        "z": "10db5822.97cf88",
+        "name": "",
+        "method": "DELETE",
+        "ret": "txt",
+        "paytoqs": false,
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 1670,
+        "y": 200,
+        "wires": [
+            [
+                "899d6f4d.61163"
+            ]
+        ]
+    },
+    {
+        "id": "a552106d.663ae",
+        "type": "debug",
+        "z": "10db5822.97cf88",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 2170,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "5e85caef.3137a4",
+        "type": "http request",
+        "z": "10db5822.97cf88",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": false,
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 520,
+        "y": 60,
+        "wires": [
+            [
+                "57d35431.7e294c"
+            ]
+        ]
+    },
+    {
+        "id": "57d35431.7e294c",
+        "type": "function",
+        "z": "10db5822.97cf88",
+        "name": "CheckKubernetesProxy",
+        "func": "// Checking result if Kubernetes proxy is live\nvar namespace = global.get(\"namespace\");\nif (msg.payload != \"ok\") {\n    node.status({fill:\"red\",shape:\"dot\",text:\"Cannot talk to kubernetes proxy.\"});\n    node.warn(\"test\");\n    throw(\"Cannot talk to kubernetes proxy.\");\n}\nnode.status({fill:\"green\",shape:\"dot\",text:\"Kubernetes proxy is live.\"});\n// Now set the next url to find all available deployments\nmsg.url = env.get(\"kubeproxy\")+'/apis/apps/v1/namespaces/'+namespace+'/deployments';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 750,
+        "y": 60,
+        "wires": [
+            [
+                "399412bd.20488e"
+            ]
+        ]
+    },
+    {
+        "id": "899d6f4d.61163",
+        "type": "function",
+        "z": "10db5822.97cf88",
+        "name": "DeletedDeploymentsReport",
+        "func": "node.status({fill:\"green\",shape:\"dot\",text:\"Nodes deleted and ready to deploy nodes.\"});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1930,
+        "y": 200,
+        "wires": [
+            [
+                "a552106d.663ae"
+            ]
+        ]
+    },
+    {
+        "id": "399412bd.20488e",
+        "type": "http request",
+        "z": "10db5822.97cf88",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": false,
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 970,
+        "y": 60,
+        "wires": [
+            [
+                "96b9ad3b.4c1e8"
+            ]
+        ]
+    },
+    {
+        "id": "586e280e.6989a8",
+        "type": "debug",
+        "z": "10db5822.97cf88",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1310,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "96b9ad3b.4c1e8",
+        "type": "function",
+        "z": "10db5822.97cf88",
+        "name": "FilterOut",
+        "func": "// Clean output and build an array with all deployments names needed on the next step\nvar data = msg.payload;\nvar deployments = [];\nvar tmpstr;\ndata.items.forEach(element => {\n    tmpstr = element.metadata.name;\n    deployments.push(tmpstr);\n});\nmsg.deployments = deployments;\ndelete msg.url;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1140,
+        "y": 60,
+        "wires": [
+            [
+                "586e280e.6989a8",
+                "68b62ab8.e62fd4"
+            ]
+        ]
+    },
+    {
+        "id": "24de8143.2a84fe",
+        "type": "subflow:10db5822.97cf88",
+        "z": "11ac64d5.10699b",
+        "name": "",
+        "env": [
+            {
+                "name": "nameid",
+                "value": "test",
+                "type": "str"
+            },
+            {
+                "name": "kubeproxy",
+                "value": "192.168.2.241:8080",
+                "type": "str"
+            },
+            {
+                "name": "broker",
+                "value": "192.168.2.241:1883",
+                "type": "str"
+            },
+            {
+                "name": "globalappsettings",
+                "value": "{\"broker\":\"192.168.2.241:1883\"}",
+                "type": "json"
+            }
+        ],
+        "x": 350,
+        "y": 100,
+        "wires": [
+            [
+                "9426350d.3eb388"
+            ]
+        ]
+    }
+]
