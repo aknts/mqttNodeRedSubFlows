@@ -22,9 +22,9 @@ For Debian installations that is the /lib/systemd/system/ directory.
 
 Enable, start and check the service by using the following commands
 
-systemctl enable kubectlproxy.service
-systemctl start kubectlproxy.service
-systemctl -l status kubectlproxy.service
+systemctl enable kubectlproxy.service\
+systemctl start kubectlproxy.service\
+systemctl -l status kubectlproxy.service\
 
 To stop it user the following command
 
