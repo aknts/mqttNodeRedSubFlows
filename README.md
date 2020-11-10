@@ -1,5 +1,5 @@
 # redkube
-Node red sublows to deploy kubernetes deployments.
+Node red sublows to deploy to a kubernetes cluster.
 
 Build initially to deploy STRAND but same subflows can now deploy any app having in mind some minimum requirements.
 
